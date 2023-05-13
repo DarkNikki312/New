@@ -1,0 +1,246 @@
+apply plugin: 'com.android.application'
+apply plugin: 'com.google.devtools.ksp'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-parcelize'
+
+def commitSHA1 = 'COMMIT_SHA1'
+def gitRemote = 'GIT_REMOTE'
+
+dependencies {
+    // Data and domain modules
+    implementation project(':owncloudDomain')
+    implementation project(':owncloudData')
+
+    // Kotlin
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$orgJetbrainsKotlin"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$orgJetbrainsKotlinx"
+
+    // Android X
+    implementation "androidx.annotation:annotation:1.6.0"
+    implementation "androidx.appcompat:appcompat:$androidxAppcompat"
+    implementation "androidx.biometric:biometric:1.1.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "androidx.legacy:legacy-support-v4:$androidxLegacy"
+    implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$androidxLifecycle"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:$androidxLifecycle"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$androidxLifecycle"
+    implementation "androidx.lifecycle:lifecycle-common-java8:$androidxLifecycle"
+    implementation "androidx.preference:preference-ktx:1.2.0"
+    implementation "androidx.room:room-runtime:$androidxRoom"
+    implementation "androidx.sqlite:sqlite-ktx:2.3.1"
+    implementation "androidx.work:work-runtime-ktx:2.8.1"
+    implementation("androidx.browser:browser:1.5.0") { because "CustomTabs required for OAuth2 and OIDC" }
+    implementation("androidx.enterprise:enterprise-feedback:1.1.0") { because "MDM feedback" }
+
+    // KTX extensions, see https://developer.android.com/kotlin/ktx.html
+    implementation "androidx.core:core-ktx:$androidxCore"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$androidxLifecycle"
+    implementation "androidx.fragment:fragment-ktx:$androidxFragment"
+
+    // Image loading
+    implementation "com.github.bumptech.glide:glide:4.15.1"
+    implementation "com.github.2coffees1team:GlideToVectorYou:v2.0.0"
+
+    // Zooming Android ImageView.
+    implementation "com.github.chrisbanes:PhotoView:2.3.0"
+
+    // Koin dependency injector
+    implementation "io.insert-koin:koin-core:$ioInsertKoin"
+    implementation "io.insert-koin:koin-androidx-workmanager:$ioInsertKoin"
+
+    // Miscellaneous
+    implementation "com.getbase:floatingactionbutton:1.10.1"
+    implementation "com.github.aritraroy.PatternLockView:patternlockview:a90b0d4bf0"
+    implementation "com.google.android.exoplayer:exoplayer:2.16.1"
+    implementation "com.google.android.material:material:1.8.0"
+    implementation "com.jakewharton:disklrucache:2.0.2"
+
+    // Markdown Preview
+    implementation "io.noties.markwon:core:$markwon"
+    implementation "io.noties.markwon:ext-tables:$markwon"
+    implementation "io.noties.markwon:ext-strikethrough:$markwon"
+    implementation "io.noties.markwon:ext-tasklist:$markwon"
+    implementation "io.noties.markwon:html:$markwon"
+
+    // Tests
+    testImplementation project(":owncloudTestUtil")
+    testImplementation "androidx.arch.core:core-testing:$androidxArchCore"
+    testImplementation "io.mockk:mockk:$ioMockk"
+    testImplementation "junit:junit:$junitVersion"
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$orgJetbrainsKotlinx"
+
+    // Instrumented tests
+    androidTestImplementation project(":owncloudTestUtil")
+    androidTestImplementation "androidx.annotation:annotation:$androidxAnnotation"
+    androidTestImplementation "androidx.arch.core:core-testing:2.2.0"
+    androidTestImplementation "androidx.test.espresso:espresso-contrib:$androidxTestEspresso"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxTestEspresso"
+    androidTestImplementation "androidx.test.espresso:espresso-intents:$androidxTestEspresso"
+    androidTestImplementation "androidx.test.espresso:espresso-web:$androidxTestEspresso"
+    androidTestImplementation "androidx.test.ext:junit:$androidxTestExt"
+    androidTestImplementation "androidx.test.uiautomator:uiautomator:$androidxTestUiautomator"
+    androidTestImplementation "androidx.test:core:$androidxTest"
+    androidTestImplementation "androidx.test:rules:$androidxTest"
+    androidTestImplementation "androidx.test:runner:$androidxTest"
+    androidTestImplementation "com.github.tmurakami:dexopener:2.0.5"
+    androidTestImplementation("io.mockk:mockk-android:$ioMockk") { exclude module: "objenesis" }
+    debugImplementation "androidx.test:monitor:1.6.1"
+
+    debugImplementation "androidx.fragment:fragment-testing:$androidxFragment"
+    debugImplementation "com.facebook.stetho:stetho:1.6.0"
+}
+
+android {
+    compileSdkVersion sdkCompileVersion
+
+    defaultConfig {
+        minSdkVersion sdkMinVersion
+        targetSdkVersion sdkTargetVersion
+
+        testInstrumentationRunner "com.owncloud.android.utils.OCTestAndroidJUnitRunner"
+
+        versionCode = 30000404
+        versionName = "4.0-beta.4"
+
+        buildConfigField "String", gitRemote, "\"" + getGitOriginRemote() + "\""
+        buildConfigField "String", commitSHA1, "\"" + getLatestGitHash() + "\""
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
+    }
+
+    sourceSets {
+        androidTest.java.srcDirs += "src/test-common/java"
+        test.java.srcDirs += "src/test-common/java"
+    }
+
+    lint {
+        abortOnError true
+        htmlOutput file('../lint-app-report.html')
+        ignoreWarnings false
+        xmlReport false
+    }
+
+    signingConfigs {
+        release {
+            if (System.env.OC_RELEASE_KEYSTORE) {
+                storeFile file(System.env.OC_RELEASE_KEYSTORE)  // use an absolute path
+                storePassword System.env.OC_RELEASE_KEYSTORE_PASSWORD
+                keyAlias System.env.OC_RELEASE_KEY_ALIAS
+                keyPassword System.env.OC_RELEASE_KEY_PASSWORD
+            }
+        }
+    }
+
+    buildTypes {
+
+        release {
+            if (System.env.OC_RELEASE_KEYSTORE) {
+                signingConfig signingConfigs.release
+            }
+        }
+
+        debug {
+            applicationIdSuffix ".debug"
+        }
+    }
+
+    flavorDimensions "management"
+    productFlavors {
+        original {
+            dimension "management"
+        }
+        mdm {
+            dimension "management"
+        }
+    }
+
+    applicationVariants.all { variant ->
+        def appName = System.env.OC_APP_NAME
+        setOutputFileName(variant, appName, project)
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+        animationsDisabled = true
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+
+    packagingOptions {
+        resources.excludes.add("META-INF/*")
+    }
+
+    namespace "com.owncloud.android"
+    testNamespace "com.owncloud.android.test"
+}
+
+// Updates output file names of a given variant to format
+// [appName].[variant.versionName].[OC_BUILD_NUMBER]-[variant.name].apk.
+//
+// OC_BUILD_NUMBER is an environment variable read directly in this method. If undefined, it's not added.
+//
+// @param variant           Build variant instance which output file name will be updated.
+// @param appName           String to use as first part of the new file name. May be undefined, the original
+//                          project.archivesBaseName property will be used instead.
+// @param callerProject     Caller project.
+
+def setOutputFileName(variant, appName, callerProject) {
+    logger.info("Setting new name for output of variant $variant.name")
+
+    def originalFile = variant.outputs[0].outputFile
+    def originalName = originalFile.name
+    println "originalName is $originalName"
+
+    def newName = ""
+
+    if (appName) {
+        newName += appName
+    } else {
+        newName += "owncloud"
+    }
+
+    def versionName = "$variant.mergedFlavor.versionName"
+    if (variant.mergedFlavor.manifestPlaceholders.versionName != null) {
+        versionName = "$variant.mergedFlavor.manifestPlaceholders.versionName"
+    }
+    if (variant.buildType.manifestPlaceholders.versionName != null) {
+        versionName = "$variant.buildType.manifestPlaceholders.versionName"
+    }
+    newName += "_$versionName"
+
+    def buildNumber = System.env.OC_BUILD_NUMBER
+    if (buildNumber) {
+        newName += "_$buildNumber"
+    }
+
+    newName += originalName.substring(callerProject.archivesBaseName.length())
+
+    println "$variant.name: newName is $newName"
+
+    variant.outputs.all {
+        outputFileName = new File(".", newName)
+    }
+}
+
+static def getLatestGitHash() {
+    def process = "git rev-parse --short HEAD".execute()
+    return process.text.toString().trim()
+}
+
+static def getGitOriginRemote() {
+    def process = "git remote -v".execute()
+    def values = process.text.toString().trim().split("\\r\\n|\\n|\\r")
+
+    def found = values.find { it.startsWith("origin") && it.endsWith("(push)") }
+    return found.replace("origin", "").replace("(push)", "").replace(".git", "").trim()
+}
