@@ -1,0 +1,28 @@
+name: Auto Commit
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # Запуск каждый день в полночь (UTC)
+  workflow_dispatch: # Позволяет запускать вручную
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Клонируем репозиторий
+        uses: actions/checkout@v3
+
+      - name: Генерируем изменение
+        run: |
+          echo "Последнее обновление: $(date)" > last_update.txt
+
+      - name: Настраиваем Git
+        run: |
+          git config --global user.email "akarpenko1885@gmail.com"
+          git config --global user.name "DarkNikki312"
+
+      - name: Делаем коммит
+        run: |
+          git add .
+          git commit -m "Авто-коммит: $(date)" || echo "Ничего не изменилось"
+          git push || echo "Нечего пушить"
