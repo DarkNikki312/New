@@ -1,0 +1,2 @@
+git commit --allow-empty -m "Fake commit"
+git push origin main
